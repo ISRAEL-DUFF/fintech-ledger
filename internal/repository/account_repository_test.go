@@ -6,10 +6,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/joho/godotenv"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
@@ -22,9 +23,22 @@ var accountRepo repository.AccountRepository
 
 // TestMain sets up the test database and runs all tests.
 func TestMain(m *testing.M) {
-	// Initialize an in-memory SQLite database for testing
-	// "file::memory:?cache=shared" means a shared in-memory database
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared&_fk=true"), &gorm.Config{
+	// Load environment variables from .env file for tests
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("No .env file found or failed to load .env file for tests. Assuming environment variables are set.")
+	}
+
+	// Get test database URL from environment variable
+	testDBURL := os.Getenv("TEST_DATABASE_URL")
+	log.Printf("Attempting to connect to TEST_DATABASE_URL: %s\n", testDBURL) // ADD THIS LINE
+
+	if testDBURL == "" {
+		log.Fatal("TEST_DATABASE_URL environment variable not set. Please set it to your PostgreSQL test database.")
+	}
+
+	// Initialize PostgreSQL database for testing
+	db, err := gorm.Open(postgres.Open(testDBURL), &gorm.Config{
 		Logger: logger.New(
 			log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
 			logger.Config{
@@ -33,7 +47,7 @@ func TestMain(m *testing.M) {
 		),
 	})
 	if err != nil {
-		log.Fatalf("Failed to connect to in-memory SQLite database: %v", err)
+		log.Fatalf("Failed to connect to PostgreSQL test database: %v", err)
 	}
 
 	testDB = db
@@ -49,15 +63,18 @@ func TestMain(m *testing.M) {
 	exitCode := m.Run()
 
 	// Clean up (optional for in-memory, but good practice)
-	sqlDB, _ := testDB.DB()
-	sqlDB.Close()
+	// In a real PostgreSQL test setup, you might drop the test schema/database here if it was created dynamically.
+	// sqlDB, _ := testDB.DB()
+	// sqlDB.Close()
 
 	os.Exit(exitCode)
 }
 
 // clearAccountsTable clears all data from the accounts table before each test.
+// Using TRUNCATE for PostgreSQL for speed and to reset auto-incrementing IDs if any.
 func clearAccountsTable(t *testing.T) {
-	err := testDB.Exec("DELETE FROM accounts").Error
+	// CASCADE is often needed if there are foreign key constraints, which we don't have yet but will.
+	err := testDB.Exec("TRUNCATE TABLE accounts CASCADE").Error
 	require.NoError(t, err, "Failed to clear accounts table")
 }
 
@@ -164,6 +181,7 @@ func TestUpdateAccount(t *testing.T) {
 	require.NoError(t, accountRepo.CreateAccount(ctx, account))
 
 	account.Name = "Updated Name"
+	// GORM automatically updates UpdatedAt on .Save() or specific .Update() calls
 	err := accountRepo.UpdateAccount(ctx, account)
 	require.NoError(t, err)
 

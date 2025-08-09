@@ -4,38 +4,21 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
-// InitDB initializes and returns a new GORM database connection.
+// InitDB initializes and returns a new GORM database connection configured for PostgreSQL.
 func InitDB() (*gorm.DB, error) {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		log.Fatal("DATABASE_URL environment variable not set")
 	}
 
-	var dialector gorm.Dialector
-	var db *gorm.DB
-	var err error
-
-	if strings.HasPrefix(dbURL, "postgres") {
-		log.Println("Connecting to PostgreSQL...")
-		dialector = postgres.Open(dbURL)
-	} else if strings.HasPrefix(dbURL, "file:") || !strings.Contains(dbURL, "://") {
-		// Assuming file: for explicit path or no scheme for relative path (e.g., "./test.db")
-		log.Println("Connecting to SQLite...")
-		dialector = sqlite.Open(dbURL)
-	} else {
-		return nil, fmt.Errorf("unsupported database URL scheme: %s", dbURL)
-	}
-
-	db, err = gorm.Open(dialector, &gorm.Config{
+	db, err := gorm.Open(postgres.Open(dbURL), &gorm.Config{
 		Logger: logger.New(
 			log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
 			logger.Config{
@@ -48,7 +31,7 @@ func InitDB() (*gorm.DB, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to open database connection with GORM: %w", err)
+		return nil, fmt.Errorf("failed to open database connection with GORM (PostgreSQL): %w", err)
 	}
 
 	// Get generic database object sql.DB to use its functions
@@ -62,6 +45,6 @@ func InitDB() (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	log.Println("Successfully connected to the database with GORM!")
+	log.Println("Successfully connected to the database with GORM (PostgreSQL)!")
 	return db, nil
 }

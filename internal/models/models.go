@@ -18,35 +18,38 @@ const (
 
 // Account represents a financial account in the ledger.
 type Account struct {
-	ID        string      `json:"id"`
-	Name      string      `json:"name"`
-	Type      AccountType `json:"type"`
-	UserID    string      `json:"user_id,omitempty"`   // Optional: For user-specific wallet accounts
-	Currency  string      `json:"currency"`
-	CreatedAt time.Time   `json:"created_at"`
-	UpdatedAt time.Time   `json:"updated_at"`
-	// ParentAccountID string `json:"parent_account_id,omitempty"` // For hierarchical accounts
+	ID        string      `json:"id" gorm:"primaryKey"`
+	Name      string      `json:"name" gorm:"not null"`
+	Type      AccountType `json:"type" gorm:"type:varchar(20);not null;index"`
+	UserID    string      `json:"user_id,omitempty" gorm:"index"`   // Optional: For user-specific wallet accounts
+	Currency  string      `json:"currency" gorm:"type:varchar(3);not null"`
+	CreatedAt time.Time   `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time   `json:"updated_at" gorm:"autoUpdateTime"`
+	// ParentAccountID string      `json:"parent_account_id,omitempty" gorm:"index"` // For hierarchical accounts
 }
 
 // EntryLine represents a single line within an Entry, affecting one account.
 type EntryLine struct {
-	AccountID string  `json:"account_id"`
-	Debit     float64 `json:"debit"`  // Amount debited from AccountID
-	Credit    float64 `json:"credit"` // Amount credited to AccountID
+	ID        string    `json:"id" gorm:"primaryKey"`
+	EntryID   string    `json:"entry_id" gorm:"index"`
+	AccountID string    `json:"account_id" gorm:"index"`
+	Debit     float64   `json:"debit" gorm:"type:decimal(19,4)"`  // Amount debited from AccountID
+	Credit    float64   `json:"credit" gorm:"type:decimal(19,4)"` // Amount credited to AccountID
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // Entry represents a single atomic financial transaction (e.g., a ledger entry).
 // In double-entry bookkeeping, the sum of debits must equal the sum of credits across all lines.
 type Entry struct {
-	ID              string      `json:"id"`
-	Description     string      `json:"description"`
-	Date            time.Time   `json:"date"`
-	Lines           []EntryLine `json:"lines"`
-	TransactionType string      `json:"transaction_type"` // e.g., "deposit", "withdrawal", "transfer", "fee"
-	ReferenceID     string      `json:"reference_id,omitempty"` // ID from an external system or parent CTE
-	Status          string      `json:"status"` // e.g., "posted", "voided", "pending"
-	CreatedAt       time.Time   `json:"created_at"`
-	UpdatedAt       time.Time   `json:"updated_at"`
+	ID              string      `json:"id" gorm:"primaryKey"`
+	Description     string      `json:"description" gorm:"not null"`
+	Date            time.Time   `json:"date" gorm:"index;not null"`
+	Lines           []EntryLine `json:"lines" gorm:"foreignKey:EntryID;constraint:OnDelete:CASCADE"`
+	TransactionType string      `json:"transaction_type" gorm:"not null"` // e.g., "deposit", "withdrawal", "transfer", "fee"
+	ReferenceID     string      `json:"reference_id,omitempty"`            // ID from an external system or parent CTE
+	Status          string      `json:"status" gorm:"not null;default:'posted'"` // e.g., "posted", "voided", "pending"
+	CreatedAt       time.Time   `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt       time.Time   `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // CTEStatus is an enumeration for the state of a Chained Transaction Event.

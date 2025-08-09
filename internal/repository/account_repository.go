@@ -2,12 +2,12 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
-	"wallet-system/internal/models"
+	"github.com/ISRAEL-DUFF/fintech-ledger/internal/models"
+	"gorm.io/gorm"
 )
 
 // AccountRepository defines the interface for account data operations.
@@ -19,108 +19,84 @@ type AccountRepository interface {
 	DeleteAccount(ctx context.Context, id string) error // Soft delete might be preferred in production
 }
 
-// accountRepository implements AccountRepository using SQL database.
+// accountRepository implements AccountRepository using GORM.
 type accountRepository struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
 // NewAccountRepository creates a new AccountRepository.
-func NewAccountRepository(db *sql.DB) AccountRepository {
+func NewAccountRepository(db *gorm.DB) AccountRepository {
 	return &accountRepository{db: db}
 }
 
-// CreateAccount creates a new account in the database.
+// CreateAccount creates a new account in the database using GORM.
 func (r *accountRepository) CreateAccount(ctx context.Context, account *models.Account) error {
 	if account.ID == "" {
 		account.ID = uuid.New().String()
 	}
+	// GORM automatically handles CreatedAt and UpdatedAt if you embed gorm.Model,
+	// but since we have custom fields, we'll set them manually or rely on hooks.
+	// For now, we'll ensure they are set if zero.
 	if account.CreatedAt.IsZero() {
 		account.CreatedAt = time.Now()
 	}
-	account.UpdatedAt = time.Now()
+	account.UpdatedAt = time.Now() // Ensure UpdatedAt is set on creation as well
 
-	query := `INSERT INTO accounts (id, name, type, user_id, currency, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)`
-	_, err := r.db.ExecContext(ctx, query, account.ID, account.Name, account.Type, account.UserID, account.Currency, account.CreatedAt, account.UpdatedAt)
-	if err != nil {
-		return fmt.Errorf("failed to create account: %w", err)
+	result := r.db.WithContext(ctx).Create(account)
+	if result.Error != nil {
+		return fmt.Errorf("failed to create account: %w", result.Error)
 	}
 	return nil
 }
 
-// GetAccountByID retrieves an account by its ID.
+// GetAccountByID retrieves an account by its ID using GORM.
 func (r *accountRepository) GetAccountByID(ctx context.Context, id string) (*models.Account, error) {
 	account := &models.Account{}
-	query := `SELECT id, name, type, user_id, currency, created_at, updated_at FROM accounts WHERE id = $1`
-	err := r.db.QueryRowContext(ctx, query, id).Scan(&account.ID, &account.Name, &account.Type, &account.UserID, &account.Currency, &account.CreatedAt, &account.UpdatedAt)
-	if err != nil {
-		if err == sql.ErrNoRows {
+	result := r.db.WithContext(ctx).First(account, "id = ?", id)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
 			return nil, nil // Account not found
 		}
-		return nil, fmt.Errorf("failed to get account by ID: %w", err)
+		return nil, fmt.Errorf("failed to get account by ID: %w", result.Error)
 	}
 	return account, nil
 }
 
-// GetAccountsByUserID retrieves all accounts associated with a specific user ID.
+// GetAccountsByUserID retrieves all accounts associated with a specific user ID using GORM.
 func (r *accountRepository) GetAccountsByUserID(ctx context.Context, userID string) ([]*models.Account, error) {
 	var accounts []*models.Account
-	query := `SELECT id, name, type, user_id, currency, created_at, updated_at FROM accounts WHERE user_id = $1`
-	rows, err := r.db.QueryContext(ctx, query, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get accounts by user ID: %w", err)
+	result := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&accounts)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to get accounts by user ID: %w", result.Error)
 	}
-	defer rows.Close()
-
-	for rows.Next() {
-		account := &models.Account{}
-		err := rows.Scan(&account.ID, &account.Name, &account.Type, &account.UserID, &account.Currency, &account.CreatedAt, &account.UpdatedAt)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan account row: %w", err)
-		}
-		accounts = append(accounts, account)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error after iterating over account rows: %w", err)
-	}
-
 	return accounts, nil
 }
 
-// UpdateAccount updates an existing account. Note: Immutable fields like ID, Type, Currency should not typically be changed after creation.
+// UpdateAccount updates an existing account using GORM.
+// Note: Immutable fields like ID, Type, Currency should not typically be changed after creation.
 func (r *accountRepository) UpdateAccount(ctx context.Context, account *models.Account) error {
-	account.UpdatedAt = time.Now()
-	// Only allow updating mutable fields like Name. Type, UserID, Currency are typically immutable.
-	query := `UPDATE accounts SET name = $1, updated_at = $2 WHERE id = $3`
-	result, err := r.db.ExecContext(ctx, query, account.Name, account.UpdatedAt, account.ID)
-	if err != nil {
-		return fmt.Errorf("failed to update account: %w", err)
+	account.UpdatedAt = time.Now() // Update timestamp before saving
+
+	result := r.db.WithContext(ctx).Model(account).Where("id = ?", account.ID).Update("name", account.Name)
+	if result.Error != nil {
+		return fmt.Errorf("failed to update account: %w", result.Error)
 	}
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-	if rowsAffected == 0 {
+	if result.RowsAffected == 0 {
 		return fmt.Errorf("account with ID %s not found for update", account.ID)
 	}
 	return nil
 }
 
-// DeleteAccount deletes an account by its ID.
+// DeleteAccount deletes an account by its ID using GORM.
 // In a production financial system, a 'soft delete' (marking as inactive) is almost always preferred
 // over a hard delete to maintain historical integrity and audit trails.
 func (r *accountRepository) DeleteAccount(ctx context.Context, id string) error {
 	// For production, consider adding an 'is_active' or 'status' column and updating it to 'inactive'
-	query := `DELETE FROM accounts WHERE id = $1`
-	result, err := r.db.ExecContext(ctx, query, id)
-	if err != nil {
-		return fmt.Errorf("failed to delete account: %w", err)
+	result := r.db.WithContext(ctx).Delete(&models.Account{}, "id = ?", id)
+	if result.Error != nil {
+		return fmt.Errorf("failed to delete account: %w", result.Error)
 	}
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected after delete: %w", err)
-	}
-	if rowsAffected == 0 {
+	if result.RowsAffected == 0 {
 		return fmt.Errorf("account with ID %s not found for deletion", id)
 	}
 	return nil

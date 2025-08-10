@@ -76,7 +76,7 @@ func main() {
 }
 
 // setupRoutes configures all the routes for the application
-func setupRoutes(server *api.Server, transactionService *service.TransactionService) {
+func setupRoutes(server *api.Server, transactionService service.TransactionService) {
 	// Initialize transaction handler
 	transactionHandler := handlers.NewTransactionHandler(transactionService)
 

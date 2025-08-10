@@ -52,14 +52,89 @@ func (m *mockTransactionService) GetEntriesByDateRange(ctx context.Context, star
 }
 
 func (m *mockTransactionService) ValidateEntry(ctx context.Context, entry *models.Entry) error {
-	// Basic validation for testing
+	// Simple validation for testing
+	if entry.Description == "" {
+		return fmt.Errorf("description is required")
+	}
 	if len(entry.Lines) < 2 {
-		return fmt.Errorf("entry must have at least two lines")
+		return fmt.Errorf("at least two entry lines are required")
 	}
 	// Additional validation for test cases
 	if entry.TransactionType == "invalid-type" {
 		return fmt.Errorf("invalid transaction type")
 	}
+	return nil
+}
+
+func (m *mockTransactionService) ProcessTransfer(ctx context.Context, req service.TransferRequest) (*models.Transaction, error) {
+	return &models.Transaction{
+		ID:          "test-transfer-123",
+		Type:        "transfer",
+		Status:      "completed",
+		Description: fmt.Sprintf("Transfer of %f %s", req.Amount, req.Currency),
+		CreatedAt:   time.Now(),
+	}, nil
+}
+
+func (m *mockTransactionService) ProcessDeposit(ctx context.Context, req service.DepositRequest) (*models.Transaction, error) {
+	return &models.Transaction{
+		ID:          "test-deposit-123",
+		Type:        "deposit",
+		Status:      "completed",
+		Description: fmt.Sprintf("Deposit of %f %s", req.Amount, req.Currency),
+		CreatedAt:   time.Now(),
+	}, nil
+}
+
+func (m *mockTransactionService) ProcessWithdrawal(ctx context.Context, req service.WithdrawalRequest) (*models.Transaction, error) {
+	return &models.Transaction{
+		ID:          "test-withdrawal-123",
+		Type:        "withdrawal",
+		Status:      "completed",
+		Description: fmt.Sprintf("Withdrawal of %f %s", req.Amount, req.Currency),
+		CreatedAt:   time.Now(),
+	}, nil
+}
+
+func (m *mockTransactionService) ProcessExchange(ctx context.Context, req service.ExchangeRequest) (*models.Transaction, error) {
+	return &models.Transaction{
+		ID:          "test-exchange-123",
+		Type:        "exchange",
+		Status:      "completed",
+		Description: fmt.Sprintf("Exchange %f %s to %f %s", 
+			req.SourceAmount, req.SourceCurrency, 
+			req.DestinationAmount, req.DestinationCurrency),
+		CreatedAt:   time.Now(),
+	}, nil
+}
+
+func (m *mockTransactionService) ProcessFee(ctx context.Context, req service.FeeRequest) (*models.Transaction, error) {
+	return &models.Transaction{
+		ID:          "test-fee-123",
+		Type:        "fee",
+		Status:      "completed",
+		Description: fmt.Sprintf("Fee of %f %s", req.Amount, req.Currency),
+		CreatedAt:   time.Now(),
+	}, nil
+}
+
+func (m *mockTransactionService) ReverseTransfer(ctx context.Context, transactionID string) error {
+	return nil
+}
+
+func (m *mockTransactionService) ReverseDeposit(ctx context.Context, transactionID string) error {
+	return nil
+}
+
+func (m *mockTransactionService) ReverseWithdrawal(ctx context.Context, transactionID string) error {
+	return nil
+}
+
+func (m *mockTransactionService) ReverseExchange(ctx context.Context, transactionID string) error {
+	return nil
+}
+
+func (m *mockTransactionService) ReverseFee(ctx context.Context, transactionID string) error {
 	return nil
 }
 

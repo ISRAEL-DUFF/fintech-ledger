@@ -127,3 +127,109 @@ func (s *transactionServiceImpl) GetEntryByID(ctx context.Context, id string) (*
 func (s *transactionServiceImpl) GetEntriesByDateRange(ctx context.Context, startDate, endDate time.Time, page, pageSize int) ([]*models.Entry, int64, error) {
 	return s.repo.GetEntriesByDateRange(ctx, startDate, endDate, page, pageSize)
 }
+
+// ProcessTransfer processes a transfer between two accounts
+func (s *transactionServiceImpl) ProcessTransfer(ctx context.Context, req TransferRequest) (*models.Transaction, error) {
+	// TODO: Implement transfer logic with proper validation and transaction handling
+	tx := &models.Transaction{
+		ID:          uuid.New().String(),
+		Type:        "transfer",
+		Status:      "completed",
+		Description: fmt.Sprintf("Transfer of %f %s to account %s", req.Amount, req.Currency, req.DestinationAccountID),
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	return tx, nil
+}
+
+// ProcessDeposit processes a deposit to an account
+func (s *transactionServiceImpl) ProcessDeposit(ctx context.Context, req DepositRequest) (*models.Transaction, error) {
+	// TODO: Implement deposit logic with proper validation and transaction handling
+	tx := &models.Transaction{
+		ID:          uuid.New().String(),
+		Type:        "deposit",
+		Status:      "completed",
+		Description: fmt.Sprintf("Deposit of %f %s", req.Amount, req.Currency),
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	return tx, nil
+}
+
+// ProcessWithdrawal processes a withdrawal from an account
+func (s *transactionServiceImpl) ProcessWithdrawal(ctx context.Context, req WithdrawalRequest) (*models.Transaction, error) {
+	// TODO: Implement withdrawal logic with proper validation and transaction handling
+	tx := &models.Transaction{
+		ID:          uuid.New().String(),
+		Type:        "withdrawal",
+		Status:      "completed",
+		Description: fmt.Sprintf("Withdrawal of %f %s", req.Amount, req.Currency),
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	return tx, nil
+}
+
+// ProcessExchange processes a currency exchange between two accounts
+func (s *transactionServiceImpl) ProcessExchange(ctx context.Context, req ExchangeRequest) (*models.Transaction, error) {
+	// TODO: Implement currency exchange logic with proper validation and transaction handling
+	tx := &models.Transaction{
+		ID:          uuid.New().String(),
+		Type:        "exchange",
+		Status:      "completed",
+		Description: fmt.Sprintf("Exchange %f %s to %f %s", req.SourceAmount, req.SourceCurrency, req.DestinationAmount, req.DestinationCurrency),
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	return tx, nil
+}
+
+// ProcessFee processes a fee transaction
+func (s *transactionServiceImpl) ProcessFee(ctx context.Context, req FeeRequest) (*models.Transaction, error) {
+	// TODO: Implement fee processing logic
+	// This is a placeholder implementation
+	tx := &models.Transaction{
+		ID:          uuid.New().String(),
+		Type:        "fee",
+		Status:      "completed",
+		Description: fmt.Sprintf("Fee of %f %s", req.Amount, req.Currency),
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	return tx, nil
+}
+
+// ReverseTransfer reverses a transfer transaction
+func (s *transactionServiceImpl) ReverseTransfer(ctx context.Context, transactionID string) error {
+	// TODO: Implement transfer reversal logic with proper validation and transaction handling
+	return nil
+}
+
+// ReverseDeposit reverses a deposit transaction
+func (s *transactionServiceImpl) ReverseDeposit(ctx context.Context, transactionID string) error {
+	// TODO: Implement deposit reversal logic with proper validation and transaction handling
+	return nil
+}
+
+// ReverseWithdrawal reverses a withdrawal transaction
+func (s *transactionServiceImpl) ReverseWithdrawal(ctx context.Context, transactionID string) error {
+	// TODO: Implement withdrawal reversal logic with proper validation and transaction handling
+	return nil
+}
+
+// ReverseExchange reverses a currency exchange transaction
+func (s *transactionServiceImpl) ReverseExchange(ctx context.Context, transactionID string) error {
+	// TODO: Implement exchange reversal logic with proper validation and transaction handling
+	return nil
+}
+
+// ReverseFee reverses a fee transaction
+func (s *transactionServiceImpl) ReverseFee(ctx context.Context, transactionID string) error {
+	// TODO: Implement fee reversal logic with proper validation and transaction handling
+	return nil
+}
